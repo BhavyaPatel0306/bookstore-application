@@ -1,148 +1,170 @@
 package bookstoreapp;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.List;
 
-/**
- * Bookstore 
- * Holds books (ArrayList<Book>) and customers (ArrayList<Customer>).
- * Handles file I/O (books.txt, customers.txt) and authentication.
- */
+/** Book and customer storage for the academic bookstore application. */
 public class Bookstore {
-
-    private ArrayList<Book> books;
-    private ArrayList<Customer> customers;
-
-    private static final String BOOKS_FILE     = "books.txt";
-    private static final String CUSTOMERS_FILE = "customers.txt";
+    private final ArrayList<Book> books = new ArrayList<>();
+    private final ArrayList<Customer> customers = new ArrayList<>();
+    private final Path dataDirectory;
 
     public Bookstore() {
-        books     = new ArrayList<>();
-        customers = new ArrayList<>();
+        this(Path.of("."));
     }
 
-
-
-    public ArrayList<Book> getBooks() {
-        return books;
+    /** Allows isolated persistence tests without touching the user's data. */
+    public Bookstore(Path dataDirectory) {
+        this.dataDirectory = dataDirectory;
     }
 
-    public ArrayList<Customer> getCustomers() {
-        return customers;
-    }
+    public ArrayList<Book> getBooks() { return books; }
+    public ArrayList<Customer> getCustomers() { return customers; }
 
-    /**
-     * Finds a customer by username.
-     * @return the Customer, or null if not found
-     * Validates for unique username
-     */
     public Customer findCustomer(String username) {
-        for (Customer c : customers) {
-            if (c.getUsername().equals(username)) {
-                return c;
-            }
+        for (Customer customer : customers) {
+            if (customer.getUsername().equals(username)) return customer;
         }
         return null;
     }
 
-    /**
-     * Authenticates a login attempt.
-     * @param username entered username
-     * @param password entered password
-     * @return User (Owner or Customer) if valid, null otherwise
-     */
     public User authenticate(String username, String password) {
-        // Check owner
-        if (username.equals("admin") && password.equals("admin")) {
-            return new Owner();
-        }
-        // Check customers
-        for (Customer c : customers) {
-            if (c.getUsername().equals(username) && c.getPassword().equals(password)) {
-                return c;
-            }
+        if ("admin".equals(username) && "admin".equals(password)) return new Owner();
+        for (Customer customer : customers) {
+            if (customer.getUsername().equals(username)
+                    && customer.getPassword().equals(password)) return customer;
         }
         return null;
     }
-    /**
-     * Loads books and customers from their respective text files.
-     */
+
+    /** Repeated loads replace in-memory data instead of duplicating records. */
     public void loadData() {
+        books.clear();
+        customers.clear();
         loadBooks();
         loadCustomers();
     }
 
-    /**
-     * Saves books and customers to their respective text files.
-     */
-    public void saveData() {
-        saveBooks();
-        saveCustomers();
-    }
-    // Reads file line by line and splits each into 2 parts and creates books objects 
     private void loadBooks() {
-        File f = new File(BOOKS_FILE);
-        if (!f.exists()) return;
-        try (BufferedReader br = new BufferedReader(new FileReader(f))) { //reads the file in chunks instead of characters
+        Path file = dataDirectory.resolve("books.txt");
+        if (!Files.exists(file)) return;
+        try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             String line;
-            while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty()) continue;
-                String[] parts = line.split(",", -1);
-                if (parts.length == 2) {
-                    String name  = parts[0].trim();
-                    double price = Double.parseDouble(parts[1].trim());
-                    if (!name.isEmpty() && Double.isFinite(price) && price >= 0) {
+            int number = 0;
+            while ((line = reader.readLine()) != null) {
+                number++;
+                if (line.isBlank()) continue;
+                String[] fields = line.split(",", -1);
+                if (fields.length != 2) {
+                    warn(file, number);
+                    continue;
+                }
+                try {
+                    String name = fields[0].trim();
+                    double price = Double.parseDouble(fields[1].trim());
+                    if (name.isEmpty() || !Double.isFinite(price) || price < 0) {
+                        warn(file, number);
+                    } else {
                         books.add(new Book(name, price));
                     }
+                } catch (NumberFormatException exception) {
+                    warn(file, number);
                 }
             }
-        } catch (IOException e) { //checks if file exists or readable
-            System.err.println("Error loading books: " + e.getMessage());
-        }
-    }
-        
-   //Overwrites the file 
-    private void saveBooks() {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(BOOKS_FILE, false))) {
-            for (Book b : books) {
-                pw.println(b.toString());
-            }
-        } catch (IOException e) {
-            System.err.println("Error saving books: " + e.getMessage());
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Unable to load " + file, exception);
         }
     }
 
     private void loadCustomers() {
-        File f = new File(CUSTOMERS_FILE);
-        if (!f.exists()) return;
-        try (BufferedReader br = new BufferedReader(new FileReader(f))) {
+        Path file = dataDirectory.resolve("customers.txt");
+        if (!Files.exists(file)) return;
+        try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             String line;
-            while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty()) continue;
-                String[] parts = line.split(",");
-                if (parts.length == 3) {
-                    String uname  = parts[0].trim();
-                    String pwd    = parts[1].trim();
-                    int    pts    = Integer.parseInt(parts[2].trim()); //Converts string to int
-                    if (!uname.isEmpty() && pts >= 0) {
-                        customers.add(new Customer(uname, pwd, pts));
+            int number = 0;
+            while ((line = reader.readLine()) != null) {
+                number++;
+                if (line.isBlank()) continue;
+                String[] fields = line.split(",", -1);
+                if (fields.length != 3) {
+                    warn(file, number);
+                    continue;
+                }
+                try {
+                    String username = fields[0].trim();
+                    String password = fields[1].trim();
+                    int points = Integer.parseInt(fields[2].trim());
+                    if (username.isEmpty() || points < 0) {
+                        warn(file, number);
+                    } else {
+                        customers.add(new Customer(username, password, points));
                     }
+                } catch (NumberFormatException exception) {
+                    warn(file, number);
                 }
             }
-        } catch (IOException | NumberFormatException e) {
-            System.err.println("Error loading customers: " + e.getMessage());
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Unable to load " + file, exception);
         }
     }
-    //Overwrites the file 
-    private void saveCustomers() {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(CUSTOMERS_FILE, false))) {
-            for (Customer c : customers) {
-                pw.println(c.toString());
+
+    private static void warn(Path file, int line) {
+        System.err.println("Skipping invalid record at " + file + ":" + line);
+    }
+
+    /**
+     * Write each file to a sibling temporary file, then replace the original.
+     * A failure is surfaced to the caller instead of being silently ignored.
+     * Each file is replaced independently; this is not a two-file transaction.
+     */
+    public void saveData() {
+        try {
+            saveFile(dataDirectory.resolve("books.txt"), bookLines());
+            saveFile(dataDirectory.resolve("customers.txt"), customerLines());
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Unable to save bookstore data", exception);
+        }
+    }
+
+    private List<String> bookLines() {
+        List<String> lines = new ArrayList<>();
+        for (Book book : books) lines.add(book.toString());
+        return lines;
+    }
+
+    private List<String> customerLines() {
+        List<String> lines = new ArrayList<>();
+        for (Customer customer : customers) lines.add(customer.toString());
+        return lines;
+    }
+
+    private static void saveFile(Path destination, List<String> lines) throws IOException {
+        Path parent = destination.toAbsolutePath().getParent();
+        Path temporary = Files.createTempFile(parent, ".bookstore-", ".tmp");
+        try {
+            try (BufferedWriter writer = Files.newBufferedWriter(temporary, StandardCharsets.UTF_8)) {
+                for (String line : lines) {
+                    writer.write(line);
+                    writer.newLine();
+                }
             }
-        } catch (IOException e) {
-            System.err.println("Error saving customers: " + e.getMessage());
+            try {
+                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException exception) {
+                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
         }
     }
 }
