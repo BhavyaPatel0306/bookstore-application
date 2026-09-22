@@ -1,6 +1,10 @@
 package bookstoreapp;
 
 import java.util.ArrayList;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
+import java.io.UncheckedIOException;
 
 /**
  * Dependency-free regression checks. Run with:
@@ -25,7 +29,7 @@ public final class BookstoreRegressionTest {
         return selected;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         Customer buyer = new Customer("buyer", "demo");
         closeTo(buyer.buyBooks(books(0.10, 0.20)), 0.30);
         check(buyer.getPoints() == 3, "Decimal purchase should earn three points");
@@ -56,6 +60,47 @@ public final class BookstoreRegressionTest {
             throw new AssertionError("NaN price accepted");
         } catch (IllegalArgumentException expected) {
             checks++;
+        }
+
+        Path directory = Files.createTempDirectory("bookstore-regression-");
+        try {
+            Bookstore store = new Bookstore(directory);
+            store.getBooks().add(new Book("Book One", 12.50));
+            store.getCustomers().add(new Customer("sample", "demo", 1000));
+            store.saveData();
+
+            Bookstore restored = new Bookstore(directory);
+            restored.loadData();
+            check(restored.getBooks().size() == 1, "Book did not persist");
+            closeTo(restored.getBooks().get(0).getPrice(), 12.50);
+            check(restored.getCustomers().size() == 1, "Customer did not persist");
+            check(restored.findCustomer("sample").getPoints() == 1000, "Points did not persist");
+            check("Gold".equals(restored.findCustomer("sample").getStatus().getStatus()),
+                    "Restored status should be Gold");
+            restored.loadData();
+            check(restored.getBooks().size() == 1, "Repeated load duplicated books");
+
+            Files.writeString(directory.resolve("books.txt"),
+                    "Broken,not-a-price\\nValid,4.25\\nInvalid,NaN\\n", StandardCharsets.UTF_8);
+            Files.writeString(directory.resolve("customers.txt"),
+                    "bad,demo,not-a-number\\nvalid,demo,15\\n", StandardCharsets.UTF_8);
+            restored.loadData();
+            check(restored.getBooks().size() == 1, "Valid book after bad record lost");
+            check("Valid".equals(restored.getBooks().get(0).getName()), "Wrong book restored");
+            check(restored.findCustomer("valid") != null, "Valid customer after bad record lost");
+
+            // An invalid data directory must report a failure rather than silently losing data.
+            Bookstore cannotSave = new Bookstore(directory.resolve("missing-directory"));
+            try {
+                cannotSave.saveData();
+                throw new AssertionError("Expected save failure");
+            } catch (UncheckedIOException expected) {
+                checks++;
+            }
+        } finally {
+            Files.deleteIfExists(directory.resolve("books.txt"));
+            Files.deleteIfExists(directory.resolve("customers.txt"));
+            Files.deleteIfExists(directory);
         }
 
         System.out.println("Passed " + checks + " regression checks.");
