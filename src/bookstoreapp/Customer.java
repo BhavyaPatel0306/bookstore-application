@@ -1,6 +1,8 @@
 package bookstoreapp;
 
 import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 /**
  * Customer - extends User. Context class in the State Design Pattern.
@@ -89,20 +91,13 @@ public class Customer extends User {
      * @return final cost after redemption
      */
     public double redeemPointsandBuy(double totalCost) {
-        // Calculate maximum discount from current points
-        double discount = points / 100.0; // every 100 pts = $1
-        double finalCost = totalCost - discount;
-        if (finalCost < 0) finalCost = 0;
-
-        // Calculate actual discount applied (capped so cost >= 0)
-        // Calculates the discount in dollars if the points > totalcost
-        double actualDiscount = totalCost - finalCost;
-        int pointsRedeemed = (int)(actualDiscount * 100);
-        int remainingPoints = points - pointsRedeemed;
-
-        // Earn 10 points per $1 of final cost paid including the discount
-        int pointsEarned = (int)(finalCost * 10);
-        points = remainingPoints + pointsEarned;
+        BigDecimal originalCost = money(totalCost);
+        BigDecimal discount = BigDecimal.valueOf(points, 2).min(originalCost);
+        BigDecimal finalCost = originalCost.subtract(discount);
+        int pointsRedeemed = discount.movePointRight(2).intValueExact();
+        int pointsEarned = finalCost.multiply(BigDecimal.TEN)
+                .setScale(0, RoundingMode.DOWN).intValueExact();
+        points = Math.addExact(points - pointsRedeemed, pointsEarned);
 
         updateStatus();
         return finalCost;
