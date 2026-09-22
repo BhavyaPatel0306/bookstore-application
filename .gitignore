@@ -1,0 +1,15 @@
+# Java build output
+/build/
+/dist/
+*.class
+*.jar
+
+# NetBeans user-specific settings
+/nbproject/private/
+
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,3 @@
+Clean Code,45.99
+Design Patterns,59.99
+Java Fundamentals,39.99
