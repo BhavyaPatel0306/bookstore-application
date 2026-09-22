@@ -92,10 +92,12 @@ public class Bookstore {
                 if (parts.length == 2) {
                     String name  = parts[0].trim();
                     double price = Double.parseDouble(parts[1].trim());
-                    books.add(new Book(name, price));
+                    if (!name.isEmpty() && Double.isFinite(price) && price >= 0) {
+                        books.add(new Book(name, price));
+                    }
                 }
             }
-        } catch (IOException e) { //checks if file exists or readable
+        } catch (IOException | NumberFormatException e) { //checks if file exists or readable
             System.err.println("Error loading books: " + e.getMessage());
         }
     }
@@ -124,10 +126,12 @@ public class Bookstore {
                     String uname  = parts[0].trim();
                     String pwd    = parts[1].trim();
                     int    pts    = Integer.parseInt(parts[2].trim()); //Converts string to int
-                    customers.add(new Customer(uname, pwd, pts));
+                    if (!uname.isEmpty() && pts >= 0) {
+                        customers.add(new Customer(uname, pwd, pts));
+                    }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | NumberFormatException e) {
             System.err.println("Error loading customers: " + e.getMessage());
         }
     }
