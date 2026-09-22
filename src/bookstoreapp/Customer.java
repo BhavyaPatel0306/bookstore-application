@@ -1,13 +1,11 @@
 package bookstoreapp;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 
-/**
- * Customer - extends User. Context class in the State Design Pattern.
- * Holds a Status (goldStatus or silverStatus) that changes based on points.
- */
+/** Customer context for the Silver/Gold State Design Pattern. */
 public class Customer extends User {
-
     private int points;
     private Status status;
 
@@ -18,103 +16,62 @@ public class Customer extends User {
     }
 
     public Customer(String username, String password) {
-        super(username, password);
-        this.points = 0;
-        this.status = new Silverstatus();
+        this(username, password, 0);
     }
 
     public Customer(String username, String password, int points) {
         super(username, password);
+        if (points < 0) throw new IllegalArgumentException("Points cannot be negative");
         this.points = points;
-        // Set correct initial state based on saved points
-        if (points >= 1000) {
-            this.status = new Goldstatus();
-        } else {
-            this.status = new Silverstatus();
-        }
+        this.status = points >= 1000 ? new Goldstatus() : new Silverstatus();
     }
 
-    @Override
-    public void login() {
-        // Handled by the GUI
-    }
+    @Override public void login() { /* Handled by GUI. */ }
+    @Override public void logout() { /* Handled by GUI. */ }
 
-    @Override
-    public void logout() {
-        // Handled by the GUI
-    }
-
-    public int getPoints() {
-        return points;
-    }
+    public int getPoints() { return points; }
 
     public void setPoints(int points) {
+        if (points < 0) throw new IllegalArgumentException("Points cannot be negative");
         this.points = points;
+        updateStatus();
     }
 
-    public Status getStatus() {
-        return status;
-    }
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
 
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    /**
-     * Buy selected books. Earns 10 points per $1 CAD spent.
-     * Updates status after purchase.
-     *
-     * @selectedBooks list of books to buy
-     * @return total cost of the purchase
-     */
-    public double buyBooks(ArrayList<Book> selectedBooks) {
-        double totalCost = 0;
-        for (Book b : selectedBooks) {
-            totalCost += b.getPrice();
+    private static BigDecimal money(double amount) {
+        if (!Double.isFinite(amount) || amount < 0) {
+            throw new IllegalArgumentException("Amount must be finite and non-negative");
         }
-        // Earn 10 points per $1 spent
-        int pointsEarned = (int)(totalCost * 10);
-        points += pointsEarned;
-        updateStatus();
-        return totalCost;
+        return BigDecimal.valueOf(amount).setScale(2, RoundingMode.HALF_UP);
     }
 
-    /**
-     * Redeem all accumulated points (100 pts = $1 discount), then buy.
-     * Transaction cost cannot go below $0.
-     * Earns 10 points per $1 of the final amount paid.
-     * Updates status after purchase.
-     *
-     * @param totalCost original total cost before redemption
-     * @return final cost after redemption
-     */
+    /** Earn 10 whole points per dollar paid; fractional points are rounded down. */
+    public double buyBooks(ArrayList<Book> selectedBooks) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (Book book : selectedBooks) total = total.add(money(book.getPrice()));
+        int earned = total.multiply(BigDecimal.TEN)
+                .setScale(0, RoundingMode.DOWN).intValueExact();
+        points = Math.addExact(points, earned);
+        updateStatus();
+        return total.doubleValue();
+    }
+
+    /** Redeem at 100 points per dollar, capped at the purchase cost. */
     public double redeemPointsandBuy(double totalCost) {
-        // Calculate maximum discount from current points
-        double discount = points / 100.0; // every 100 pts = $1
-        double finalCost = totalCost - discount;
-        if (finalCost < 0) finalCost = 0;
-
-        // Calculate actual discount applied (capped so cost >= 0)
-        // Calculates the discount in dollars if the points > totalcost
-        double actualDiscount = totalCost - finalCost;
-        int pointsRedeemed = (int)(actualDiscount * 100);
-        int remainingPoints = points - pointsRedeemed;
-
-        // Earn 10 points per $1 of final cost paid including the discount
-        int pointsEarned = (int)(finalCost * 10);
-        points = remainingPoints + pointsEarned;
-
+        BigDecimal original = money(totalCost);
+        BigDecimal discount = BigDecimal.valueOf(points, 2).min(original);
+        BigDecimal finalCost = original.subtract(discount);
+        int redeemed = discount.movePointRight(2).intValueExact();
+        int earned = finalCost.multiply(BigDecimal.TEN)
+                .setScale(0, RoundingMode.DOWN).intValueExact();
+        points = Math.addExact(points - redeemed, earned);
         updateStatus();
-        return finalCost;
+        return finalCost.doubleValue();
     }
 
-    /**
-     * updates the current Status object.
-     * Part of the State Design Pattern.
-     */
-    public void updateStatus() {
-        status.updateStatus(this);
-    }
+    public void updateStatus() { status.updateStatus(this); }
 
     @Override
     public String toString() {

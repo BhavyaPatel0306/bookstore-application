@@ -1,0 +1,21 @@
+name: Java regression checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compile-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Compile application and tests
+        run: |
+          mkdir -p out
+          javac -d out src/bookstoreapp/*.java test/bookstoreapp/*.java
+      - name: Run regression checks
+        run: java -ea -cp out bookstoreapp.BookstoreRegressionTest

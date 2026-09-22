@@ -79,7 +79,7 @@ public class OwnerBooksScreen extends JPanel {
         double price;
         try {
             price = Double.parseDouble(priceText);
-            if (price < 0) throw new NumberFormatException();
+            if (!Double.isFinite(price) || price < 0) throw new NumberFormatException();
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this,
                     "Price must be a valid non-negative number.", "Input Error", JOptionPane.WARNING_MESSAGE);

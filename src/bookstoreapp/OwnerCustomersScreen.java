@@ -24,7 +24,7 @@ public class OwnerCustomersScreen extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
 
         // --- TOP: Table ---
-        tableModel = new DefaultTableModel(new String[]{"Username", "Password", "Points"}, 0) {
+        tableModel = new DefaultTableModel(new String[]{"Username", "Points"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         table = new JTable(tableModel);
@@ -39,7 +39,7 @@ public class OwnerCustomersScreen extends JPanel {
         usernameField = new JTextField(12);
         mid.add(usernameField);
         mid.add(new JLabel("Password:"));
-        passwordField = new JTextField(10);
+        passwordField = new JPasswordField(10);
         mid.add(passwordField);
         JButton addBtn = new JButton("Add");
         mid.add(addBtn);
@@ -62,7 +62,7 @@ public class OwnerCustomersScreen extends JPanel {
     public void refresh() {
         tableModel.setRowCount(0);
         for (Customer c : app.getBookStore().getCustomers()) {
-            tableModel.addRow(new Object[]{c.getUsername(), c.getPassword(), c.getPoints()});
+            tableModel.addRow(new Object[]{c.getUsername(), c.getPoints()});
         }
     }
 
@@ -92,7 +92,7 @@ public class OwnerCustomersScreen extends JPanel {
 
         // Use Owner.addCustomer() as per class diagram
         owner.addCustomer(username, password, app.getBookStore());
-        tableModel.addRow(new Object[]{username, password, 0});
+        tableModel.addRow(new Object[]{username, 0});
         usernameField.setText("");
         passwordField.setText("");
     }
