@@ -81,9 +81,9 @@ public final class BookstoreRegressionTest {
             check(restored.getBooks().size() == 1, "Repeated load duplicated books");
 
             Files.writeString(directory.resolve("books.txt"),
-                    "Broken,not-a-price\\nValid,4.25\\nInvalid,NaN\\n", StandardCharsets.UTF_8);
+                    "Broken,not-a-price\nValid,4.25\nInvalid,NaN\n", StandardCharsets.UTF_8);
             Files.writeString(directory.resolve("customers.txt"),
-                    "bad,demo,not-a-number\\nvalid,demo,15\\n", StandardCharsets.UTF_8);
+                    "bad,demo,not-a-number\nvalid,demo,15\n", StandardCharsets.UTF_8);
             restored.loadData();
             check(restored.getBooks().size() == 1, "Valid book after bad record lost");
             check("Valid".equals(restored.getBooks().get(0).getName()), "Wrong book restored");
