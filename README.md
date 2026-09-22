@@ -117,4 +117,16 @@ In PowerShell, create `out` using the command shown above. The regression suite 
 
 ## Screenshots
 
-Screenshots of the actual application are being prepared. No generated mockups are presented as application screenshots.
+Actual screenshots captured from the running Java Swing application using demonstration data.
+
+| Login | Owner — books |
+| --- | --- |
+| ![Bookstore login screen](docs/screenshots/01-login.png) | ![Owner book management screen](docs/screenshots/02-owner-books.png) |
+
+| Owner — customers | Customer — select books |
+| --- | --- |
+| ![Owner customer management screen](docs/screenshots/03-owner-customers.png) | ![Customer book selection screen](docs/screenshots/04-customer-books.png) |
+
+**Purchase result**
+
+![Customer purchase result with cost and loyalty points](docs/screenshots/05-purchase-result.png)
