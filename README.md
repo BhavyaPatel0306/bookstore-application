@@ -47,16 +47,22 @@ As part of the three-person team, **Bhavya Patel** contributed to the Swing UI a
 
 `Customer` is the **State Pattern context**. `Silverstatus` and `Goldstatus` implement `Status` and update the customer's state as their points change.
 
-```mermaid
-classDiagram
-    User <|-- Owner
-    User <|-- Customer
-    Customer --> Status
-    Status <|.. Silverstatus
-    Status <|.. Goldstatus
-    Bookstore o-- Book
-    Bookstore o-- Customer
+**Class relationships (text diagram; no Mermaid renderer required):**
+
+```text
+User
+├── Owner                  extends User
+└── Customer               extends User
+    └── Status             current loyalty state
+        ├── Silverstatus   implements Status
+        └── Goldstatus     implements Status
+
+Bookstore
+├── Book                   stores book records
+└── Customer               stores customer records
 ```
+
+The diagram shows class relationships rather than an exhaustive list of fields and methods; see [`src/bookstoreapp/`](src/bookstoreapp/) for the actual Java definitions.
 
 `Bookstore` manages the inventory, customer accounts, authentication, and text-file storage. Each data file is written to a temporary sibling file before replacing its previous version. **The two files are replaced independently, not as one database transaction.** If saving fails on window close, the app shows an error and remains open.
 
