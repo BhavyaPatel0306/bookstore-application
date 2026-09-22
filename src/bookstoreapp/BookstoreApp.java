@@ -47,12 +47,19 @@ public class BookstoreApp extends JFrame {
         bookStore = new Bookstore();
         bookStore.loadData();
 
-        // Save data and exit when [x] is clicked
+        // Save before closing; keep the window open if saving fails
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                bookStore.saveData();
-                System.exit(0);
+                try {
+                    bookStore.saveData();
+                    dispose();
+                } catch (UncheckedIOException ex) {
+                    JOptionPane.showMessageDialog(BookstoreApp.this,
+                            "Unable to save bookstore data. The application will remain open.\n"
+                                    + ex.getMessage(),
+                            "Save failed", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
 
