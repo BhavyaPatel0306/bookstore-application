@@ -88,7 +88,7 @@ public class Bookstore {
             while ((line = br.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty()) continue;
-                String[] parts = line.split(",");
+                String[] parts = line.split(",", -1);
                 if (parts.length == 2) {
                     String name  = parts[0].trim();
                     double price = Double.parseDouble(parts[1].trim());
@@ -97,7 +97,7 @@ public class Bookstore {
                     }
                 }
             }
-        } catch (IOException | NumberFormatException e) { //checks if file exists or readable
+        } catch (IOException e) { //checks if file exists or readable
             System.err.println("Error loading books: " + e.getMessage());
         }
     }
